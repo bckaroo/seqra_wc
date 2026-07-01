@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Westchester County: NYS SEQR Reform Impact Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <!-- Leaflet JS (core) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Esri Leaflet -->
+    <script src="https://unpkg.com/esri-leaflet@3.0.2/dist/esri-leaflet.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        #map {
+            height: 700px;
+            width: 100%;
+            background: #e8f4f8;
+        }
+        
+        .sidebar {
+            padding: 25px 30px;
+            border-top: 1px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        
+        .info-panel {
+            background: #f8fafb;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            max-width: 350px;
+        }
+        
+        .info-panel h3 {
+            color: #1e3a5f;
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #2d5a87;
+            padding-bottom: 8px;
+        }
+        
+        .info-panel h4 {
+            color: #2d5a87;
+            font-size: 15px;
+            margin: 12px 0 8px 0;
+            font-weight: 600;
+        }
+        
+        .info-panel p, .info-panel ul {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #4a4a4a;
+        }
+        
+        .info-panel ul {
+            padding-left: 20px;
+        }
+        
+        .info-panel li {
+            margin-bottom: 6px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .legend-item:last-child {
+            border-bottom: none;
+        }
+        
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        
+        .legend-label {
+            font-size: 13px;
+            color: #4a4a4a;
+            flex: 1;
+        }
+        
+        .legend-sub {
+            font-size: 11px;
+            color: #666;
+            margin-top: -8px;
+            padding-left: 36px;
+        }
+        
+        .popup-content {
+            min-width: 280px;
+        }
+        
+        .popup-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+        }
+        
+        .popup-section {
+            margin-bottom: 12px;
+        }
+        
+        .popup-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+        
+        .popup-value {
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .threshold-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .threshold-urban {
+            background: #2d5a87;
+        }
+        
+        .threshold-nonurban {
+            background: #c49b2f;
+        }
+        
+        .threshold-unzoned {
+            background: #8c3b2f;
+        }
+        
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .service-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+        
+        .service-yes {
+            background: #27ae60;
+        }
+        
+        .service-no {
+            background: #e74c3c;
+        }
+        
+        .overlay-layer {
+            opacity: 0.8;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            border-radius: 6px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+        }
+        
+        .leaflet-popup-tip-container {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        
+        @media (max-width: 768px) {
+            #map {
+                height: 500px;
+            }
+            
+            .sidebar {
+                padding: 15px 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Westchester County: NYS SEQR Reform Impact Map</h1>
+            <p class="subtitle">2026-2027 Enacted Budget — Housing Review Exemptions for Small-Scale Affordable Development</p>
+        </header>
+        
+        <div id="map"></div>
+        
+        <div class="sidebar">
+            <div class="info-panel">
+                <h3>🎯 SEQR Reform Overview</h3>
+                <p>The 2026-2027 NY State Budget (TED Part S) introduces significant exemptions from SEQR review for housing projects, accelerating affordable housing development across Westchester County.</p>
+                
+                <h4>Exemption Thresholds:</h4>
+                <ul>
+                    <li><strong>Urbanized Areas:</strong> Up to 300 units exempt</li>
+                    <li><strong>Non-Urban Areas:</strong> Up to 100 units exempt</li>
+                    <li><strong>Unzoned Areas:</strong> Up to 20 units exempt</li>
+                </ul>
+                
+                <h4>Requirements:</h4>
+                <ul>
+                    <li>Must be on previously disturbed land</li>
+                    <li>Existing water/sewer connections required</li>
+                    <li>Cannot be in exclusively industrial zones</li>
+                </ul>
+                
+                <h4>EIS Timeline:</h4>
+                <p>1 year for initial determination, 2 years max to finalize environmental impact statement.</p>
+            </div>
+            
+            <div class="info-panel">
+                <h3>🗺️ Map Layers</h3>
+                <ul>
+                    <li><strong>Municipal Boundaries:</strong> All 45 jurisdictions in Westchester County</li>
+                    <li><strong>SEQR Thresholds:</strong> Color-coded by exemption tier (urbanized/non-urban/unzoned)</li>
+                    <li><strong>Sewer Infrastructure:</strong> Existing sewer mains and manholes overlay</li>
+                    <li><strong>Census Data:</strong> 2020 Census tract population boundaries</li>
+                    <li><strong>Tax Parcels:</strong> Auto-loads at street-level zoom — use layer toggle to control</li>
+                </ul>
+                
+                <h4>Legend:</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2d5a87;"></div>
+                    <div class="legend-label">
+                        <span class="threshold-badge threshold-urban">300 Units</span><br>
+                        Urbanized Areas<br>
+                        <small class="legend-sub">Cities & major villages with sewer + water districts</small>
+                    </div>
+                </div>
+                
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #c49b2f;"></div>
+                    <div class="legend-label">
+                        <span class="threshold-badge threshold-nonurban">100 Units</span><br>
+                        Non-Urban Areas<br>
+                        <small class="legend-sub">Towns and rural villages</small>
+                    </div>
+                </div>
+                
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #8c3b2f;"></div>
+                    <div class="legend-label">
+                        <span class="threshold-badge threshold-unzoned">20 Units</span><br>
+                        Unzoned Areas<br>
+                        <small class="legend-sub">Northern county pockets (rare)</small>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>Parcel Color Coding (zoom 14+):</h4>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #27ae60;"></div>
+                        <div class="legend-label">Likely exempt \u2014 has sewer + water</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f39c12;"></div>
+                        <div class="legend-label">Partial \u2014 missing one utility</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e74c3c;"></div>
+                        <div class="legend-label">Not exempt \u2014 industrial zone</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #95a5a6;"></div>
+                        <div class="legend-label">Unknown \u2014 no utility data</div>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <h4>Blue lines = Sewer mains</h4>
+                    <p style="font-size: 12px; color: #666;">Areas with existing sewer infrastructure are more likely to qualify for SEQR exemption.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize map centered on Westchester County
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            scrollWheelZoom: true,
+            touchZoom: true,
+            doubleClickZoom: true,
+            boxZoom: true,
+            keyboard: true
+        }).setView([41.2759, -73.6489], 11);
+        
+        // Create a custom pane for parcels (above overlay pane)
+        map.createPane('parcels');
+        map.getPane('parcels').style.zIndex = 450;
+        map.getPane('parcels').style.pointerEvents = 'none';
+        
+        // Add base tile layer (CartoDB Positron for clean look)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            subdomains: 'abcd'
+        }).addTo(map);
+        
+        // Add zoom control in bottom right
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+        
+        // Attribution (re-enable control since we disabled it above)
+        map.addControl(L.control.attribution({ position: 'bottomright' }));
+        map.attributionControl.setPrefix('');
+        map.attributionControl.addAttribution('<a href="https://www.westchestergov.com" target="_blank">Westchester County GIS</a> | <a href="https://carto.com" target="_blank">© CartoDB</a>');
+        
+        // Municipalities classification data (based on characteristics)
+        const municipalities = {
+            // Urbanized Areas (300-unit threshold) - Cities and major villages with sewer + water districts
+            urban: [
+                "Yonkers", "Mount Vernon", "New Rochelle", "White Plains", "Peekskill",
+                "Rye", "Port Chester", "Tarrytown", "Sleepy Hollow", "Ossining",
+                "Hastings", "Dobbs Ferry", "Irvington", "Ardsley", "Elmsford",
+                "Greenburgh", "Scarsdale", "Bronxville", "Eastchester", "Tuckahoe",
+                "Pelham", "Pelham Manor", "Mamaroneck", "Larchmont", "Harrison",
+                "Cortlandt", "Ossining Town"
+            ],
+            
+            // Non-Urban Areas (100-unit threshold) - Rural towns and villages
+            nonurban: [
+                "Bedford", "North Castle", "New Castle", "Somers", "Yorktown",
+                "Lewisboro", "North Salem", "Pound Ridge", "Mount Kisco",
+                "Pleasantville", "Briarcliff Manor", "Chappaqua"
+            ],
+            
+            // Unzoned Areas (20-unit threshold) - Northern county pockets
+            unzoned: [
+                "Haverstraw", "Walden", "Blooming Grove", "Carter Lake",
+                "Goshen", "Poughkeepsie", "New Windsor"
+            ]
+        };
+        
+        // All Westchester municipalities (45 total)
+        const allMunicipalities = [
+            "Yonkers", "Mount Vernon", "New Rochelle", "White Plains", "Peekskill",
+            "Rye", "Port Chester", "Tarrytown", "Sleepy Hollow", "Ossining",
+            "Hastings-on-Hudson", "Dobbs Ferry", "Irvington", "Ardsley", "Elmsford",
+            "Greenburgh", "Scarsdale", "Bronxville", "Eastchester", "Tuckahoe",
+            "Pelham", "Pelham Manor", "Mamaroneck", "Larchmont", "Harrison",
+            "Cortlandt", "Ossining Town", "Bedford", "North Castle", "New Castle",
+            "Somers", "Yorktown Heights", "Lewisboro", "North Salem", "Pound Ridge",
+            "Mount Kisco", "Pleasantville", "Briarcliff Manor", "Chappaqua",
+            "Haverstraw", "Walden", "Blooming Grove", "Carter Lake",
+            "Goshen", "Poughkeepsie", "New Windsor"
+        ];
+        
+        // Store municipality features for later reference
+        const municipalityFeatures = {};
+        
+        // Query Municipal Boundaries service
+        L.esri.query({
+            url: "https://giswww.westchestergov.com/arcgis/rest/services/MunicipalBoundaries/MapServer/0"
+        }).where("1=1").returnGeometry(true).run(function(error, geoJSON, response) {
+            if (error) {
+                console.error("Error loading municipal boundaries:", error);
+                L.marker([41.2759, -73.6489]).addTo(map).bindPopup(
+                    "⚠️ Municipal boundary data could not be loaded from Westchester County GIS.<br>Please check your internet connection."
+                ).openPopup();
+                return;
+            }
+            
+            // Determine threshold category based on municipality name
+            function getCategory(name) {
+                if (municipalities.urban.includes(name)) return "urban";
+                if (municipalities.nonurban.includes(name)) return "nonurban";
+                if (municipalities.unzoned.includes(name)) return "unzoned";
+                return "nonurban"; // default
+            }
+            
+            function styleFor(feature) {
+                const name = feature.properties.NAME || feature.properties.MUNICIPALITY_NAME || "";
+                const cat = getCategory(name);
+                const colors = { urban: "#2d5a87", nonurban: "#c49b2f", unzoned: "#8c3b2f" };
+                return {
+                    fillColor: colors[cat],
+                    fillOpacity: 0.4,
+                    color: "#ffffff",
+                    weight: 1,
+                    opacity: 1
+                };
+            }
+            
+            const municipalLayer = L.geoJSON(geoJSON, {
+                style: styleFor,
+                onEachFeature: function(feature, layer) {
+                    const name = feature.properties.NAME || feature.properties.MUNICIPALITY_NAME || "Municipality";
+                    const cat = getCategory(name);
+                    municipalityFeatures[name] = layer;
+                    layer.bindPopup(createPopupContent(feature.properties, cat));
+                }
+            }).addTo(map);
+            
+            // Fit bounds to show entire county
+            map.fitBounds(municipalLayer.getBounds(), { padding: [50, 50] });
+        });
+        
+        // Create popup content for a municipality
+        function createPopupContent(props, category) {
+            const name = props.NAME || props.MUNICIPALITY_NAME || "Municipality";
+            const population = props.TOTAL_POPULATION || props.POPULATION || "Data unavailable";
+            const landArea = props.SQMILES || props.LAND_AREA || "Data unavailable";
+            
+            return `
+                <div class="popup-content">
+                    <div class="popup-title">${name}</div>
+                    
+                    <div class="popup-section">
+                        <div class="popup-label">SEQR Threshold Category:</div>
+                        <span class="threshold-badge threshold-${category}">${category === 'urban' ? '300 Units (Urbanized)' : category === 'nonurban' ? '100 Units (Non-Urban)' : '20 Units (Unzoned)'}</span>
+                    </div>
+                    
+                    <div class="popup-section">
+                        <div class="popup-label">Population:</div>
+                        <div class="popup-value">${typeof population === 'number' ? population.toLocaleString() : population}</div>
+                    </div>
+                    
+                    ${landArea !== "Data unavailable" ? `
+                    <div class="popup-section">
+                        <div class="popup-label">Land Area:</div>
+                        <div class="popup-value">${landArea} sq mi</div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="popup-section">
+                        <div class="popup-label">Classification:</div>
+                        <div class="popup-value">${category === 'urban' ? 'City or major village with sewer + water districts' : category === 'nonurban' ? 'Town or rural village' : 'Northern county pocket (unzoned)'}</div>
+                    </div>
+                    
+                    <div class="popup-section">
+                        <div class="popup-label">SEQR Reform Impact:</div>
+                        <div class="popup-value">${category === 'urban' ? `Housing projects up to 300 units are exempt from SEQR review (subject to infrastructure requirements)` : category === 'nonurban' ? `Housing projects up to 100 units are exempt from SEQR review` : `Housing projects up to 20 units are exempt from SEQR review`}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Store layers for toggle control
+        const overlayLayers = {};
+        
+        // SEQR impact classification for parcels
+        function getCategory(name) {
+            if (municipalities.urban.includes(name)) return "urban";
+            if (municipalities.nonurban.includes(name)) return "nonurban";
+            if (municipalities.unzoned.includes(name)) return "unzoned";
+            return "nonurban";
+        }
+        
+        function styleParcel(feature) {
+            const sewer = (feature.properties.SEWER_TYPE || "").trim();
+            const water = (feature.properties.WATER_SUPPLY || "").trim();
+            const propClass = (feature.properties.PROP_CLASS || "").trim();
+            const hasSewer = sewer && sewer !== "0";
+            const hasWater = water && water !== "0";
+            const isIndustrial = propClass.startsWith("3") || propClass.startsWith("4");
+            
+            if (isIndustrial) {
+                return { fillColor: "#e74c3c", fillOpacity: 0.5, color: "#c0392b", weight: 1 };
+            } else if (hasSewer && hasWater) {
+                return { fillColor: "#27ae60", fillOpacity: 0.4, color: "#1e8449", weight: 0.8 };
+            } else if (hasSewer || hasWater) {
+                return { fillColor: "#f39c12", fillOpacity: 0.4, color: "#d68910", weight: 0.8 };
+            } else {
+                return { fillColor: "#95a5a6", fillOpacity: 0.2, color: "#7f8c8d", weight: 0.5 };
+            }
+        }
+        
+        function parcelPopup(feature) {
+            const muniName = feature.properties.MUNI_NAME || feature.properties.CITYTOWN_NAME || "Unknown";
+            const cat = getCategory(muniName);
+            const addr = feature.properties.PARCEL_ADDR || "Address unavailable";
+            const sewer = feature.properties.SEWER_DESC || "None";
+            const water = feature.properties.WATER_DESC || "None";
+            const propClass = feature.properties.PROP_CLASS || "N/A";
+            const acres = feature.properties.ACRES ? feature.properties.ACRES + " ac" : "N/A";
+            const owner = feature.properties.PRIMARY_OWNER || "Unknown";
+            const threshold = cat === 'urban' ? '300 units' : cat === 'nonurban' ? '100 units' : '20 units';
+            const hasSewer = sewer !== "None";
+            const hasWater = water !== "None";
+            const isIndustrial = propClass.startsWith("3") || propClass.startsWith("4");
+            
+            let status, statusColor;
+            if (isIndustrial) {
+                status = "Likely NOT exempt \u2014 industrial zone";
+                statusColor = "#e74c3c";
+            } else if (hasSewer && hasWater) {
+                status = "Likely EXEMPT \u2014 has sewer + water";
+                statusColor = "#27ae60";
+            } else if (hasSewer || hasWater) {
+                status = "Partial \u2014 missing one utility";
+                statusColor = "#f39c12";
+            } else {
+                status = "Unknown \u2014 no utility data";
+                statusColor = "#95a5a6";
+            }
+            
+            return '<div class="popup-content">' +
+                '<div class="popup-title">' + addr + '</div>' +
+                '<div class="popup-section"><div class="popup-label">SEQR Status:</div>' +
+                '<div class="popup-value" style="color:' + statusColor + ';font-weight:600;">' + status + '</div></div>' +
+                '<div class="popup-section"><div class="popup-label">Municipality:</div>' +
+                '<div class="popup-value">' + muniName + ' (' + threshold + ' threshold)</div></div>' +
+                '<div class="popup-section"><div class="popup-label">Sewer:</div>' +
+                '<div class="popup-value">' + sewer + '</div></div>' +
+                '<div class="popup-section"><div class="popup-label">Water:</div>' +
+                '<div class="popup-value">' + water + '</div></div>' +
+                '<div class="popup-section"><div class="popup-label">Property Class:</div>' +
+                '<div class="popup-value">' + propClass + ' \u00b7 ' + acres + '</div></div>' +
+                '<div class="popup-section"><div class="popup-label">Owner:</div>' +
+                '<div class="popup-value">' + owner + '</div></div>' +
+                '</div>';
+        }
+        
+        // Parcel layer \u2014 query-based, loads features in visible bbox when zoomed in
+        let parcelLayer = null;
+        let parcelLoadingTimeout = null;
+        
+        function loadParcels() {
+            const zoom = map.getZoom();
+            if (zoom < 14) {
+                if (parcelLayer) { map.removeLayer(parcelLayer); parcelLayer = null; }
+                return;
+            }
+            const bounds = map.getBounds();
+            if (parcelLayer) { map.removeLayer(parcelLayer); }
+            
+            L.esri.query({
+                url: "https://giswww.westchestergov.com/arcgis/rest/services/DataHub_TaxParcels/MapServer/0"
+            }).within(bounds).returnGeometry(true).run(function(error, geoJSON, response) {
+                if (error) { console.error("Error loading parcels:", error); return; }
+                if (!geoJSON.features || geoJSON.features.length === 0) return;
+                if (parcelLayer) { map.removeLayer(parcelLayer); }
+                parcelLayer = L.geoJSON(geoJSON, {
+                    style: styleParcel,
+                    pane: 'parcels',
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(parcelPopup(feature), { autoPan: false, keepInView: false });
+                    }
+                }).addTo(map);
+                parcelLayer.bringToFront();
+            });
+        }
+        
+        function onMapMove() {
+            // Don't reload parcels while a popup is open
+            if (map._popup && map._popup._isOpen) return;
+            clearTimeout(parcelLoadingTimeout);
+            parcelLoadingTimeout = setTimeout(loadParcels, 500);
+        }
+        map.on('moveend', onMapMove);
+        map.on('zoomend', function() {
+            if (map._popup && map._popup._isOpen) map.closePopup();
+            loadParcels();
+        });
+        
+        // Add sewer data as overlay layers
+        L.esri.query({
+            url: "https://giswww.westchestergov.com/arcgis/rest/services/DataHub_Infrastructure/MapServer/152"
+        }).where("1=1").returnGeometry(true).run(function(error, geoJSON, response) {
+            if (error) {
+                console.error("Error loading infrastructure data:", error);
+                addLayerControl();
+                return;
+            }
+            
+            if (geoJSON.features && geoJSON.features.length > 0) {
+                const sewerStyle = {
+                    color: "#3498db",
+                    weight: 1.5,
+                    opacity: 0.6
+                };
+                
+                overlayLayers["Sewer Mains"] = L.geoJSON(geoJSON, {
+                    style: sewerStyle
+                }).addTo(map);
+            }
+            
+            // Also query sewer manholes (points)
+            L.esri.query({
+                url: "https://giswww.westchestergov.com/arcgis/rest/services/DataHub_Infrastructure/MapServer/151"
+            }).where("1=1").returnGeometry(true).run(function(err2, manholeGeoJSON, resp2) {
+                if (err2) {
+                    console.log("Manholes layer not available or no data");
+                    addLayerControl();
+                    return;
+                }
+                
+                if (manholeGeoJSON.features && manholeGeoJSON.features.length > 0) {
+                    overlayLayers["Sewer Manholes"] = L.geoJSON(manholeGeoJSON, {
+                        pointToLayer: function(feature, latlng) {
+                            return L.circleMarker(latlng, {
+                                radius: 3,
+                                color: "#2980b9",
+                                weight: 1,
+                                opacity: 0.7
+                            });
+                        }
+                    }).addTo(map);
+                }
+                
+                // Add layer control after all overlays are loaded
+                addLayerControl();
+            });
+        });
+        
+        // Query Demographics service for census tracts
+        L.esri.query({
+            url: "https://giswww.westchestergov.com/arcgis/rest/services/DataHub_Demographics/MapServer/0"
+        }).where("1=1").returnGeometry(true).run(function(error, geoJSON, response) {
+            if (error) {
+                console.error("Error loading demographics data:", error);
+                return;
+            }
+            
+            if (geoJSON.features && geoJSON.features.length > 0) {
+                const tractStyle = {
+                    fillColor: "#ffffff",
+                    fillOpacity: 0.3,
+                    color: "#cccccc",
+                    weight: 0.5
+                };
+                
+                overlayLayers["Census Tracts"] = L.geoJSON(geoJSON, {
+                    style: tractStyle
+                }).addTo(map);
+            }
+        });
+        
+        // Function to add layer toggle control
+        let layerControlAdded = false;
+        function addLayerControl() {
+            if (layerControlAdded) return;
+            layerControlAdded = true;
+            
+            L.control.layers(null, overlayLayers, {
+                position: 'topleft',
+                collapsed: true
+            }).addTo(map);
+            
+            loadParcels(); // initial load
+        }
+        
+        // Info panel removed from map overlay — data sources are documented in the sidebar below
+    </script>
+</body>
+</html>
