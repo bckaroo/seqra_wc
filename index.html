@@ -211,6 +211,21 @@
             opacity: 0.8;
         }
         
+        .parcel-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 58, 95, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            pointer-events: none;
+            display: none;
+        }
+        
         .leaflet-popup-content-wrapper {
             border-radius: 6px;
             box-shadow: 0 2px 15px rgba(0,0,0,0.2);
@@ -243,6 +258,7 @@
         </header>
         
         <div id="map"></div>
+        <div id="parcelLoading" class="parcel-loading">Loading parcels…</div>
         
         <div class="sidebar">
             <div class="info-panel">
@@ -575,18 +591,32 @@
         let parcelLayer = null;
         let parcelLoadingTimeout = null;
         
+        const loadingEl = document.getElementById('parcelLoading');
+        
         function loadParcels() {
             const zoom = map.getZoom();
             if (zoom < 14) {
                 if (parcelLayer) { map.removeLayer(parcelLayer); parcelLayer = null; }
+                loadingEl.style.display = 'none';
                 return;
             }
+            
+            // Use a smaller bbox — center 60% of viewport to reduce query size
             const bounds = map.getBounds();
+            const latPad = (bounds.getNorth() - bounds.getSouth()) * 0.2;
+            const lngPad = (bounds.getEast() - bounds.getWest()) * 0.2;
+            const queryBounds = L.latLngBounds(
+                [bounds.getSouth() + latPad, bounds.getWest() + lngPad],
+                [bounds.getNorth() - latPad, bounds.getEast() - lngPad]
+            );
+            
             if (parcelLayer) { map.removeLayer(parcelLayer); }
+            loadingEl.style.display = 'block';
             
             L.esri.query({
                 url: "https://giswww.westchestergov.com/arcgis/rest/services/DataHub_TaxParcels/MapServer/0"
-            }).within(bounds).returnGeometry(true).run(function(error, geoJSON, response) {
+            }).within(queryBounds).returnGeometry(true).run(function(error, geoJSON, response) {
+                loadingEl.style.display = 'none';
                 if (error) { console.error("Error loading parcels:", error); return; }
                 if (!geoJSON.features || geoJSON.features.length === 0) return;
                 if (parcelLayer) { map.removeLayer(parcelLayer); }
@@ -605,7 +635,7 @@
             // Don't reload parcels while a popup is open
             if (map._popup && map._popup._isOpen) return;
             clearTimeout(parcelLoadingTimeout);
-            parcelLoadingTimeout = setTimeout(loadParcels, 500);
+            parcelLoadingTimeout = setTimeout(loadParcels, 800);
         }
         map.on('moveend', onMapMove);
         map.on('zoomend', function() {
